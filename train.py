@@ -4,15 +4,25 @@ from cv2 import cv2
 import glob
 import math
 import random
+import os
 
 from posmap_defs import make_posmaps
 from model_defs import resfcn256
 
 
-def train():
+def train(mode = 'my_computer'): #Mode: whether model is training on my computer or HiPerGator
     # Generating Position Maps
     imgCount = len(glob.glob1('AFLW2000', '*.jpg'))
-    make_posmaps(imgCount)
+    if mode == 'my_computer':
+        files = glob.glob('posmap_output/*') #Clearing for new generation
+        for f in files:
+            os.remove(f)
+        #imgCount = len(glob.glob1('AFLW2000', '*.jpg'))
+        make_posmaps(imgCount)
+    elif mode == 'HiPerGator':
+        imgCount = len(glob.glob1('posmap_output', 'image?????.jpg'))
+    else:
+        raise ValueError("Error: Unknown Mode!")
 
     test_inds = random.sample(range(0,imgCount), 10) #Images to test with
     test_inds = dict.fromkeys(test_inds, True)

@@ -16,6 +16,7 @@ from face3d import mesh
 from face3d.morphable_model import MorphabelModel
 
 import glob
+import random
 
 def process_uv(uv_coords, uv_h = 256, uv_w = 256):
     uv_coords[:,0] = uv_coords[:,0]*(uv_w - 1)
@@ -105,11 +106,15 @@ def make_posmaps(num_to_read = 10):
 
     img_paths = glob.glob('AFLW2000/image?????.jpg')
     mat_paths = glob.glob('AFLW2000/image?????.mat')
+    img_mat_comb = []
     for i in range(len(img_paths)):
         img_paths[i] = img_paths[i].replace('\\','/')
-    for i in range(len(mat_paths)):
         mat_paths[i] = mat_paths[i].replace('\\', '/')
+        img_mat_comb.append([img_paths[i], mat_paths[i]])
+    
+    random.shuffle(img_mat_comb)
+
 
     for i in range(num_to_read):
-        run_posmap_300W_LP(bfm, img_paths[i], mat_paths[i], save_folder)
+        run_posmap_300W_LP(bfm, img_mat_comb[i][0], img_mat_comb[i][1], save_folder)
     
