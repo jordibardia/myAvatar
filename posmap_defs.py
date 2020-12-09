@@ -84,7 +84,7 @@ def run_posmap_300W_LP(bfm, image_path, mat_path, save_folder,  uv_h = 256, uv_w
     # 5. save files
     io.imsave('{}/{}'.format(save_folder, image_name), np.squeeze(cropped_image))
     np.save('{}/{}'.format(save_folder, image_name.replace('jpg', 'npy')), uv_position_map)
-    io.imsave('{}/{}'.format(save_folder, image_name.replace('.jpg', '_posmap.jpg')), (uv_position_map)/max(image_h, image_w)) # only for show
+    #io.imsave('{}/{}'.format(save_folder, image_name.replace('.jpg', '_posmap.jpg')), (uv_position_map)/max(image_h, image_w)) # only for show
 
     # --verify
     # import cv2
@@ -96,7 +96,7 @@ def run_posmap_300W_LP(bfm, image_path, mat_path, save_folder,  uv_h = 256, uv_w
 def make_posmaps(num_to_read = 10):
     uv_h = uv_w = 256
     image_h = image_w = 256
-    save_folder = 'posmap_output'
+    save_folder = 'data_input'
 
     global uv_coords
     uv_coords = face3d.morphable_model.load.load_uv_coords('BFM/Out/BFM_UV.mat')
@@ -104,8 +104,9 @@ def make_posmaps(num_to_read = 10):
 
     bfm = MorphabelModel('BFM/Out/BFM.mat')
 
-    img_paths = glob.glob('AFLW2000/image?????.jpg')
-    mat_paths = glob.glob('AFLW2000/image?????.mat')
+    img_paths = glob.glob('300W_LP/*.jpg')
+    mat_paths = glob.glob('300W_LP/*.mat')
+
     img_mat_comb = []
     for i in range(len(img_paths)):
         img_paths[i] = img_paths[i].replace('\\','/')
