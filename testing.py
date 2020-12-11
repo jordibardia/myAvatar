@@ -7,47 +7,107 @@ from output_io import *
 import numpy as np
 import glob
 import random
+import re
 
-mode = 'my_computer'
-if len(sys.argv) > 1 and sys.argv[1] == 'HiPerGator':
-    mode = sys.argv[1]
+def testing(test_inds, model = 'saved_models/MSE_model_10_300W', generate_models = False):
+    mode = 'my_computer'
+    if len(sys.argv) > 1 and sys.argv[1] == 'HiPerGator':
+        mode = sys.argv[1]
 
-network = resfcn256()
+    network = resfcn256()
 
-#test_inds, img_paths, posmap_paths = train(mode)
-img_paths = glob.glob('posmap_output/image?????.jpg')
-#img_paths = glob.glob('data_input/*.jpg')
-test_inds = random.sample(range(0,len(img_paths)), 32)
-test_inds = dict.fromkeys(test_inds, True)
+    #Loading mask for loss calculation
+    face_mask = cv2.imread('masks/uv_face_mask.png', cv2.IMREAD_GRAYSCALE)
+    weight_mask = cv2.imread("masks/uv_weight_mask.png", cv2.IMREAD_GRAYSCALE)
+    face_mask = np.array(face_mask).astype('float32')
+    weight_mask = np.array(weight_mask).astype('float32')
+    face_mask = face_mask / 255.0
+    weight_mask = weight_mask / 16.0
+    mask_comb = face_mask*weight_mask
+    temp = np.arange(256*256*3)
+    temp = temp.reshape(1,256,256,3).astype('float32')
+    temp[0,:,:,0] = mask_comb
+    temp[0,:,:,1] = mask_comb
+    temp[0,:,:,2] = mask_comb
+
+    #test_inds, img_paths, posmap_paths = train(mode)
+    img_paths = glob.glob('posmap_output/image?????.jpg')
+    posmap_paths = glob.glob('posmap_output/image?????.npy')
+    #img_paths = glob.glob('data_input/*.jpg')
+    #test_inds = random.sample(range(0,len(img_paths)), num_samples)
+    #test_inds = dict.fromkeys(test_inds, True)
 
 
-inp = tf.placeholder(tf.float32, shape=[None,256,256,3])
-out = network(inp, is_training=False)
-sess = tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True)))
+    inp = tf.placeholder(tf.float32, shape=[None,256,256,3])
+    out = network(inp, is_training=False)
+    ground_truth = tf.placeholder(tf.float32, shape=[None,256,256,3])
+    sess = tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True)))
 
-#tf.train.Saver(network.vars).restore(sess, 'saved_models/256_256_resfcn256_weight')
-tf.train.Saver(network.vars).restore(sess, 'saved_models/MSE_model_10_300W')
 
-test_imgs = []
-#test_posmaps = []
+    #tf.train.Saver(network.vars).restore(sess, 'saved_models/256_256_resfcn256_weight')
+    tf.train.Saver(network.vars).restore(sess, model)
 
-for key in test_inds:
-    temp_img = cv2.imread(img_paths[key])
-    temp_img = cv2.cvtColor(temp_img,cv2.COLOR_BGR2RGB)
-    test_imgs.append(temp_img/(256.0*1.1))
-    #test_posmaps.append((np.load(posmap_paths[key]))/(256.0*1.1))
+    test_imgs = np.arange(100*256*256*3)
+    test_imgs = test_imgs.reshape(100,256,256,3).astype('float32')
+    test_posmaps = np.arange(100*256*256*3)
+    test_posmaps = test_posmaps.reshape(100,256,256,3).astype('float32')
+    test_imgs_filenames = []
 
-posmaps_pred = sess.run(out, feed_dict = {inp: test_imgs})
-posmaps_pred = posmaps_pred * (256.0*1.1)
+    ind = 0
 
-triangles = np.loadtxt('indices/triangles.txt').astype(np.int32)
+    for key in test_inds:
+        filenames = img_paths[key].replace('\\','/')
+        filenames_2 = filenames.split('/')
+        filenames_3 = filenames_2[1].split('.')
+        test_imgs_filenames.append(filenames_3[0])
+        temp_img = cv2.imread(img_paths[key])
+        temp_img = cv2.cvtColor(temp_img,cv2.COLOR_BGR2RGB)
 
-for i in range(len(posmaps_pred)):
-    kpt = get_landmarks(posmaps_pred[i])
-    vertices = get_vertices(posmaps_pred[i])
-    colors = get_colors(test_imgs[i], vertices)
-    path = 'model_output/head_' + str(i) + '.obj'
-    write_obj_with_colors(path, vertices, triangles, colors)
+        temp_posmap = np.load(posmap_paths[key])/(256.0*1.1)
+        #test_imgs.append(temp_img/256.0)
+        #test_posmaps.append((np.load(posmap_paths[key]))/(256.0*1.1))
+        test_imgs[ind] = (temp_img/256.0)
+        test_posmaps[ind] = temp_posmap
+        ind += 1
+    
+
+    posmaps_pred = sess.run(out, feed_dict = {inp: test_imgs})
+    posmaps_pred_loss = np.array(posmaps_pred)
+    #loss = tf.reduce_mean(tf.square(posmaps_pred - test_posmaps)*temp)
+    loss = np.mean(np.square(posmaps_pred_loss - test_posmaps)*temp)
+    #loss = tf.metrics.mean_squared_error(new1, new2, weights=temp, name = 'MSE')
+    posmaps_pred = posmaps_pred * (256.0*1.1)
+    print("Loss: " + str(loss))
+
+
+    triangles = np.loadtxt('indices/triangles.txt').astype(np.int32)
+    uv_coords = generate_uv_coords()
+
+    if model != 'saved_models/256_256_resfcn256_weight' and generate_models == True:
+        for i in range(len(posmaps_pred)):
+            texture = cv2.remap(test_imgs[i], posmaps_pred[i][:,:,:2].astype(np.float32), None, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT,borderValue=(0))
+            kpt = get_landmarks(posmaps_pred[i])
+            vertices = get_vertices(posmaps_pred[i])
+            new_vertices = frontalize(vertices)
+            new_vertices[:,1] = 255 - new_vertices[:,1]
+            #colors = get_colors(test_imgs[i], vertices)
+
+            #path_meshlab = 'model_output/' + test_imgs_filenames[i] + '_colors.obj'
+            path_texture = 'model_output/' + test_imgs_filenames[i] + '_tex.obj'
+            #write_obj_with_colors(path_meshlab, new_vertices, triangles, colors)
+            write_obj_with_texture(path_texture, new_vertices, triangles, texture, uv_coords/256.0)
+
+def main():
+    img_paths = glob.glob('posmap_output/image?????.jpg')
+    test_inds = random.sample(range(0,len(img_paths)), 100)
+    test_inds = dict.fromkeys(test_inds, True)
+    save_model_path = 'saved_models/'
+    testing(test_inds = test_inds, model = save_model_path + str(sys.argv[1]), generate_models = False)
+    #testing(test_inds = test_inds, model = save_model_path + 'MSE_model_10_300W', generate_models = False)
+    #testing(test_inds = test_inds, model = save_model_path + '256_256_resfcn256_weight')
+
+if __name__ == '__main__':
+    main()
 
 
 

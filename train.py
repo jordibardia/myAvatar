@@ -5,25 +5,34 @@ import glob
 import math
 import random
 import os
+import sys
 
-#from posmap_defs import make_posmaps
+from posmap_defs import make_posmaps
 from model_defs import resfcn256
 
 
-def train(mode = 'my_computer', epochs = 50, loss_type = 'norm'): #Mode: whether model is training on my computer or HiPerGator
+def train(mode = 'HiPerGator', epochs = 10, loss_type = 'MSE'): #Mode: whether model is training on my computer or HiPerGator
     
     #test_amount = 32
     
     # Generating Position Maps
-    imgCount = len(glob.glob1('/blue/cis6930/jbardia/data_input', '*.jpg'))
+    #imgCount = len(glob.glob1('/blue/cis6930/jbardia/data_input', '*.jpg'))
+    imgCount = None
+    img_paths = None
+    posmap_paths = None
     if mode == 'my_computer':
-        files = glob.glob('posmap_output/*') #Clearing for new generation
-        for f in files:
-            os.remove(f)
+        #files = glob.glob('posmap_output/*') #Clearing for new generation
+        #for f in files:
+        #    os.remove(f)
         #imgCount = len(glob.glob1('AFLW2000', '*.jpg'))
-        make_posmaps(imgCount)
+        #make_posmaps(imgCount)
+        imgCount = len(glob.glob1('data_input', '*.jpg'))
+        img_paths = glob.glob('data_input/*.jpg')
+        posmap_paths = glob.glob('data_input/*.npy')
     elif mode == 'HiPerGator':
         imgCount = len(glob.glob1('/blue/cis6930/jbardia/data_input', '*.jpg'))
+        img_paths = glob.glob('/blue/cis6930/jbardia/data_input/*.jpg')
+        posmap_paths = glob.glob('/blue/cis6930/jbardia/data_input/*.npy')
     else:
         raise ValueError("Error: Unknown Mode!")
 
@@ -31,8 +40,8 @@ def train(mode = 'my_computer', epochs = 50, loss_type = 'norm'): #Mode: whether
     #test_inds = dict.fromkeys(test_inds, True)
     #print(test_inds)
 
-    img_paths = glob.glob('/blue/cis6930/jbardia/data_input/*.jpg')
-    posmap_paths = glob.glob('/blue/cis6930/jbardia/data_input/*.npy')
+    #img_paths = glob.glob('/blue/cis6930/jbardia/data_input/*.jpg')
+    #posmap_paths = glob.glob('/blue/cis6930/jbardia/data_input/*.npy')
     img_paths.sort()
     posmap_paths.sort()
     paths_comb = []
@@ -133,9 +142,12 @@ def prepareBatch(paths_comb,batch_size,curr_batch,imgCount):
     
     return None
 
-#train(mode='HiPerGator', epochs=10, loss_type='MSE')
+def main():
+    if len(sys.argv) == 1:
+        train()
+    elif len(sys.argv) == 2:
+        mode = sys.argv[1]
+        train(mode = mode)
 
-
-
-
-
+if __name__ == '__main__':
+    main()
