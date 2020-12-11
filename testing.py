@@ -9,7 +9,7 @@ import glob
 import random
 import re
 
-def testing(test_inds, model = 'saved_models/MSE_model_10_300W', generate_models = False):
+def testing(test_inds, folder = 'posmap_output', model = 'saved_models/MSE_model_10_300W', generate_models = False):
     mode = 'my_computer'
     if len(sys.argv) > 1 and sys.argv[1] == 'HiPerGator':
         mode = sys.argv[1]
@@ -30,9 +30,13 @@ def testing(test_inds, model = 'saved_models/MSE_model_10_300W', generate_models
     temp[0,:,:,1] = mask_comb
     temp[0,:,:,2] = mask_comb
 
+    files = glob.glob('model_output/*') #Clearing for new generation
+    for f in files:
+        os.remove(f)
+
     #test_inds, img_paths, posmap_paths = train(mode)
-    img_paths = glob.glob('posmap_output/image?????.jpg')
-    posmap_paths = glob.glob('posmap_output/image?????.npy')
+    img_paths = glob.glob(folder + '/image?????.jpg')
+    posmap_paths = glob.glob(folder + '/image?????.npy')
     #img_paths = glob.glob('data_input/*.jpg')
     #test_inds = random.sample(range(0,len(img_paths)), num_samples)
     #test_inds = dict.fromkeys(test_inds, True)
@@ -47,10 +51,10 @@ def testing(test_inds, model = 'saved_models/MSE_model_10_300W', generate_models
     #tf.train.Saver(network.vars).restore(sess, 'saved_models/256_256_resfcn256_weight')
     tf.train.Saver(network.vars).restore(sess, model)
 
-    test_imgs = np.arange(100*256*256*3)
-    test_imgs = test_imgs.reshape(100,256,256,3).astype('float32')
-    test_posmaps = np.arange(100*256*256*3)
-    test_posmaps = test_posmaps.reshape(100,256,256,3).astype('float32')
+    test_imgs = np.arange(len(test_inds.keys())*256*256*3)
+    test_imgs = test_imgs.reshape(len(test_inds.keys()), 256, 256, 3).astype('float32')
+    test_posmaps = np.arange(len(test_inds.keys())*256*256*3)
+    test_posmaps = test_posmaps.reshape(len(test_inds.keys()), 256, 256, 3).astype('float32')
     test_imgs_filenames = []
 
     ind = 0
@@ -83,6 +87,7 @@ def testing(test_inds, model = 'saved_models/MSE_model_10_300W', generate_models
     triangles = np.loadtxt('indices/triangles.txt').astype(np.int32)
     uv_coords = generate_uv_coords()
 
+
     if model != 'saved_models/256_256_resfcn256_weight' and generate_models == True:
         for i in range(len(posmaps_pred)):
             texture = cv2.remap(test_imgs[i], posmaps_pred[i][:,:,:2].astype(np.float32), None, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT,borderValue=(0))
@@ -90,21 +95,22 @@ def testing(test_inds, model = 'saved_models/MSE_model_10_300W', generate_models
             vertices = get_vertices(posmaps_pred[i])
             new_vertices = frontalize(vertices)
             new_vertices[:,1] = 255 - new_vertices[:,1]
-            #colors = get_colors(test_imgs[i], vertices)
 
-            #path_meshlab = 'model_output/' + test_imgs_filenames[i] + '_colors.obj'
             path_texture = 'model_output/' + test_imgs_filenames[i] + '_tex.obj'
-            #write_obj_with_colors(path_meshlab, new_vertices, triangles, colors)
             write_obj_with_texture(path_texture, new_vertices, triangles, texture, uv_coords/256.0)
 
 def main():
-    img_paths = glob.glob('posmap_output/image?????.jpg')
+    folder = 'posmap_output'
+    img_paths = glob.glob(folder + '/image?????.jpg')
     test_inds = random.sample(range(0,len(img_paths)), 100)
+    if len(sys.argv) == 3 and sys.argv[2] == 'samples':
+        folder = 'samples'
+        img_paths = glob.glob(folder + '/image?????.jpg')
+        test_inds = range(0, len(img_paths))
+    
     test_inds = dict.fromkeys(test_inds, True)
     save_model_path = 'saved_models/'
-    testing(test_inds = test_inds, model = save_model_path + str(sys.argv[1]), generate_models = False)
-    #testing(test_inds = test_inds, model = save_model_path + 'MSE_model_10_300W', generate_models = False)
-    #testing(test_inds = test_inds, model = save_model_path + '256_256_resfcn256_weight')
+    testing(test_inds = test_inds, folder = folder, model = save_model_path + str(sys.argv[1]), generate_models = True)
 
 if __name__ == '__main__':
     main()

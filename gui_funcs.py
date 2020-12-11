@@ -5,6 +5,9 @@ import numpy as np
 from output_io import *
 import glob
 import sys
+#import dlib
+
+#face_detector = dlib.cnn_face_detection_model_v1('saved_models/mmod_human_face_detector.dat')
 
 # Functions to be used by the GUI
 
@@ -18,19 +21,17 @@ def generatePositionMap(image, model = 'saved_models/MSE_model_10_300W'):
     sess = tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True)))
     tf.train.Saver(network.vars).restore(sess, model)
 
-    posmap_pred = sess.run(out, feed_dict = {inp: image_norm})
+    posmap_pred = sess.run(out, feed_dict = {inp: [image_norm]})
+    posmap_pred = np.squeeze(posmap_pred)
     posmap_pred = posmap_pred * (256.0*1.1)
 
     return posmap_pred
 
 #For generating the 3D model
 def generateModel(imagePath, model = 'saved_models/MSE_model_10_300W'):
-    #posmap_pred = generatePositionMap(image, model)
     image = cv2.imread(imagePath)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    image = image / 256.0
-    posmap_path = imagePath.replace('jpg', 'npy')
-    posmap_pred = np.load(posmap_path)
+    posmap_pred = generatePositionMap(image, model)
 
     triangles = np.loadtxt('indices/triangles.txt').astype(np.int32)
     uv_coords = generate_uv_coords()
@@ -43,6 +44,7 @@ def generateModel(imagePath, model = 'saved_models/MSE_model_10_300W'):
     colors = get_colors(image, vertices)
     path_texture = 'gui_models/' + str(len(glob.glob('gui_models/*.obj'))) + '_tex.obj'
     write_obj_with_texture(path_texture, new_vertices, triangles, texture, uv_coords/256.0)
+    return path_texture
 
 
 #Gets texture for model (Used only for report)
@@ -57,9 +59,19 @@ def getTexture(imagePath):
     cv2.imwrite(texture_path, texture)
     return texture
 
+#Cropping image to 256x256 image
+def cropImage(imagePath = 'userphoto/userinput.jpg'):
+    img = cv2.imread(imagePath)
+    #img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    cropped_img = img[112:368, 192:448]
+    cv2.imwrite('userphoto/userinput_cropped.jpg', cropped_img)
+
+
+#For testing functions
 def main():
     #getTexture(sys.argv[1])
-    generateModel(sys.argv[1])
+    #generateModel(sys.argv[1])
+    cropImage()
 
 if __name__ == '__main__':
     main()
