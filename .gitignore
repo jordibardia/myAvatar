@@ -1,0 +1,10 @@
+BFM/
+data_input/
+300W_LP/
+AFLW2000/
+gui_models/
+model_output/
+posmap_output/
+saved_models/
+etc/
+__pycache__/
