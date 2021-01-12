@@ -1,0 +1,8 @@
+ORIGINAL 300W-LP AND AFLW2000 DATASETS:
+http://www.cbsr.ia.ac.cn/users/xiangyuzhu/projects/3DDFA/main.htm
+
+data_input (Images and position maps for training):
+https://drive.google.com/file/d/1Pa9ORLxFd0edr4hAHfH3AsOFC_pnRT-F/view?usp=sharing
+
+posmap_output (Images and position maps for testing):
+https://drive.google.com/file/d/1rR8Ouj2CzBj9dBeQfH29t06fdYu40E_l/view?usp=sharing
