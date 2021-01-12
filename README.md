@@ -1,4 +1,4 @@
-# CIS4930 Project 3
+# myAvatar
 
 Face3D and models by Yao Feng:
 
@@ -10,9 +10,10 @@ Training based on:
 
 https://openaccess.thecvf.com/content_ECCV_2018/papers/Yao_Feng_Joint_3D_Face_ECCV_2018_paper.pdf
 
-Dataset used:
+Datasets used:
 
-AFLW2000-3D - http://www.cbsr.ia.ac.cn/users/xiangyuzhu/projects/3DDFA/main.htm
+300W-LP and AFLW2000-3D - http://www.cbsr.ia.ac.cn/users/xiangyuzhu/projects/3DDFA/main.htm
 
 
-Requires Tensorflow 1.4.0 and Python 3.5/3.6
+
+Requires Tensorflow 1.4.0 or lower and Python 3.5/3.6

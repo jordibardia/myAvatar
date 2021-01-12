@@ -74,33 +74,3 @@ class resfcn256(object):
     @property
     def vars(self):
         return [var for var in tf.global_variables() if self.name in var.name]
-
-
-class PosPrediction():
-    def __init__(self, resolution_inp = 256, resolution_op = 256): 
-        # -- hyper settings
-        self.resolution_inp = resolution_inp
-        self.resolution_op = resolution_op
-        self.MaxPos = resolution_inp*1.1
-
-        # network type
-        self.network = resfcn256(self.resolution_inp, self.resolution_op)
-
-        # net forward
-        self.x = tf.placeholder(tf.float32, shape=[None, self.resolution_inp, self.resolution_inp, 3])  
-        self.x_op = self.network(self.x, is_training = False)
-        self.sess = tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True)))
-
-    def restore(self, model_path):        
-        tf.train.Saver(self.network.vars).restore(self.sess, model_path)
- 
-    def predict(self, image):
-        pos = self.sess.run(self.x_op, 
-                    feed_dict = {self.x: image[np.newaxis, :,:,:]})
-        pos = np.squeeze(pos)
-        return pos*self.MaxPos
-
-    def predict_batch(self, images):
-        pos = self.sess.run(self.x_op, 
-                    feed_dict = {self.x: images})
-        return pos*self.MaxPos

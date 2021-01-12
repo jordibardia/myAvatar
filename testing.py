@@ -100,13 +100,18 @@ def testing(test_inds, folder = 'posmap_output', model = 'saved_models/MSE_model
             write_obj_with_texture(path_texture, new_vertices, triangles, texture, uv_coords/256.0)
 
 def main():
-    folder = 'posmap_output'
-    img_paths = glob.glob(folder + '/image?????.jpg')
-    test_inds = random.sample(range(0,len(img_paths)), 100)
+    folder = None
+    img_paths = None
+    test_inds = None
     if len(sys.argv) == 3 and sys.argv[2] == 'samples':
         folder = 'samples'
         img_paths = glob.glob(folder + '/image?????.jpg')
         test_inds = range(0, len(img_paths))
+    elif len(sys.argv) == 2:
+        folder = 'posmap_output'
+        img_paths = glob.glob(folder + '/image?????.jpg')
+        test_inds = random.sample(range(0,len(img_paths)), 100)
+
     
     test_inds = dict.fromkeys(test_inds, True)
     save_model_path = 'saved_models/'

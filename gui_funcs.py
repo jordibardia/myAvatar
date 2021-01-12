@@ -12,7 +12,7 @@ import sys
 # Functions to be used by the GUI
 
 #For predicting the position map of an image
-def generatePositionMap(image, model = 'saved_models/MSE_model_10_300W'):
+def generatePositionMap(image, model = 'saved_models/256_256_resfcn256_weight'):
     network = resfcn256()
     image_norm = image / 256.0 #Does not assume image is normalized beforehand
     inp = tf.placeholder(tf.float32, shape=[None,256,256,3])
@@ -28,7 +28,7 @@ def generatePositionMap(image, model = 'saved_models/MSE_model_10_300W'):
     return posmap_pred
 
 #For generating the 3D model
-def generateModel(imagePath, model = 'saved_models/MSE_model_10_300W'):
+def generateModel(imagePath, model = 'saved_models/256_256_resfcn256_weight'):
     image = cv2.imread(imagePath)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     posmap_pred = generatePositionMap(image, model)
@@ -42,7 +42,7 @@ def generateModel(imagePath, model = 'saved_models/MSE_model_10_300W'):
     new_vertices = frontalize(vertices)
     new_vertices[:,1] = 255 - new_vertices[:,1]
     colors = get_colors(image, vertices)
-    path_texture = 'gui_models/' + str(len(glob.glob('gui_models/*.obj'))) + '_tex.obj'
+    path_texture = 'gui_models/' + str(len(glob.glob('gui_models/*.obj')) + 1) + '_tex.obj'
     write_obj_with_texture(path_texture, new_vertices, triangles, texture, uv_coords/256.0)
     return path_texture
 
@@ -69,9 +69,8 @@ def cropImage(imagePath = 'userphoto/userinput.jpg'):
 
 #For testing functions
 def main():
-    #getTexture(sys.argv[1])
-    #generateModel(sys.argv[1])
-    cropImage()
+    if len(sys.argv) != 0:
+        generateModel(sys.argv[1])
 
 if __name__ == '__main__':
     main()

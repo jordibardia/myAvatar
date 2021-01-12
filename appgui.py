@@ -1,113 +1,154 @@
-msg = "hi"
-print(msg)
-import tkinter as tk
-from tkinter import filedialog, Text, PhotoImage
-import os
-from objloader import OBJ
-import cv2
-from PIL import Image, ImageTk
+import pygame
+import pygame.camera
+import pygame_gui
+from viewobj import view_obj
 from gui_funcs import generateModel, cropImage
 
-root = tk.Tk()
-#images = []
-filename = ""
+def main():
+    pygame.init()
+
+    pygame.camera.init()
+    cam_list = pygame.camera.list_cameras()
+    cam = None
+    if cam_list:
+        cam = pygame.camera.Camera(cam_list[0], (640, 480))
+        cam.start()
+
+    display_surf = pygame.display.set_mode((640,480))
+    pygame.display.set_caption("Avatar Creator")
+
+    consolas_font = pygame.font.SysFont('Consolas', 20)
+    #test_font = pygame.font.Font(pygame.font.get_default_font(), 30)
 
 
-welcomelabel = tk.Label(root, height=30 ,width = 60, padx = 5, text= "Please upload an image!\n You can take a live photo, or choose a file")
-welcomelabel.pack()
+    #Initializing UI Managers for each state in the application
+    main_menu = pygame_gui.UIManager((640,480))
+    take_picture = pygame_gui.UIManager((640,540))
+    view_prev_models = pygame_gui.UIManager((640,480))
 
+    #Initializing UI Elements for each UI Manager
+    picture_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((195,150), (250,60)), text="Take Picture", manager=main_menu)
+    previous_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((195,210), (250,60)), text="View Previous Models", manager=main_menu)
+    exit_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((195,270), (250,60)), text="Exit", manager=main_menu)
 
-def uploadFile():
-    filename = filedialog.askopenfilename(initialdir="/", title="Select File", 
-                filetypes=(("jpegs", "*.jpg"), ("All Files","*.*")))
-    #images.append(filename)
-    print(filename)
-    if filename:
-        Image.open(filename).save("userphoto/userinput.jpg")
+    takepicture_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((0,480), (213,60)), text="Take Picture", manager=take_picture)
+    rendermodel_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((213,480), (213,60)), text="Render Model", manager=take_picture)
+    picture_back_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((426,480), (213,60)), text="Back", manager=take_picture)
 
-#Code to handle user photo upload
-pic = 0
-cam = cv2.VideoCapture(0)
+    rendermodel_button.disable()
 
-if not cam.isOpened():  
-    print("Camera unable to open")
-    exit()
+    pic_text = consolas_font.render("Position face within green box.", True, (255,255,255))
+    text_rect = pic_text.get_rect()
+    text_rect.center = (315,380)
 
-def takeSelfie():
-    global pic
-    pic = pic + 1
+    obj_loading = None
+    file_dialog = None
 
-welcome1label = tk.Label(root, height=30 ,width = 50, padx = 5, text= "Render model or choose a different image to upload!")
+    mode = "main_menu"
 
+    clock = pygame.time.Clock()
 
-def displayFrame():
-    global welcomelabel
-    welcomelabel.configure(width = 600, height = 300)
-    global pic
-    s, frame = cam.read()
-    if not s:
-        print("Frame not working...")
-    else:    
-        cvImg = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    is_running = True
+    error_loading = False
 
-        cvImg = cv2.rectangle(cvImg, (190,110), (450, 370), (0,255,0), 2) #256x256 box
-        img = Image.fromarray(cvImg)
-        tkimg = ImageTk.PhotoImage(image=img)
-        welcomelabel.tkimg = tkimg
-        welcomelabel.configure(image=tkimg)
-        welcomelabel.after(10,displayFrame)
-        
-        if pic == 1:
-            welcomelabel.configure(width = 30, height = 50, text= "Please upload an image! Then render model")
-            img.save("userphoto/userinput.jpg")
-            pic = pic-1
-            cam.release()
-            cv2.destroyAllWindows()
-            welcomelabel.pack_forget()
-            openCam.pack_forget()
-            takePic.pack_forget()
-            welcome1label.pack()
-        
+    #take_picture variables
+    picture_taken = False
+    currPicture = None
+
+    while is_running:
+        time_delta = clock.tick(60)/1000.0
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                is_running = False
+            if event.type == pygame.USEREVENT:
+                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                    #main_menu
+                    if event.ui_element == picture_button:
+                        mode = "take_picture"
+                        display_surf = pygame.display.set_mode((640,540))
+                    if event.ui_element == previous_button:
+                        mode = "view_prev_models"
+                        file_dialog = pygame_gui.windows.UIFileDialog(pygame.Rect((60,60), (520, 300)), view_prev_models, window_title="Select a .OBJ...", initial_file_path='model_output', allow_existing_files_only=True)
+                    if event.ui_element == exit_button:
+                        is_running = False
+                    #take_picture
+                    if event.ui_element == takepicture_button:
+                        picture_taken = not picture_taken
+                        if picture_taken:
+                            takepicture_button.set_text("Retake Picture")
+                            rendermodel_button.enable()
+                        else:
+                            takepicture_button.set_text("Take Picture")
+                            rendermodel_button.disable()
+                    if event.ui_element == rendermodel_button:
+                        pygame.image.save(currPicture, 'userphoto/userinput.jpg')
+                        cropImage()
+                        obj_path = generateModel('userphoto/userinput_cropped.jpg')
+                        view_obj(obj_path, display_surf)
+                    if event.ui_element == picture_back_button:
+                        mode = "main_menu"
+                        picture_taken = False
+                        currPicture = None
+                        rendermodel_button.disable()
+                        takepicture_button.set_text("Take Picture")
+                        display_surf = pygame.display.set_mode((640,480))
+
+                if event.user_type == pygame_gui.UI_WINDOW_CLOSE:
+                    if event.ui_element == file_dialog:
+                        if not error_loading:
+                            mode = "main_menu"
+                        file_dialog.kill()
+                    if event.ui_element == obj_loading:
+                        if error_loading:
+                            file_dialog.kill()
+                            file_dialog = pygame_gui.windows.UIFileDialog(pygame.Rect((60,60), (520, 300)), view_prev_models, window_title="Select a .OBJ...", initial_file_path='gui_models', allow_existing_files_only=True)
+                            error_loading = False
+                        obj_loading.kill()
+                if event.user_type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
+                    if event.ui_element == file_dialog:
+                        tmp = event.text.split('.')
+                        if tmp[len(tmp) - 1] != 'obj':
+                            obj_loading = pygame_gui.windows.UIMessageWindow(pygame.Rect((60,60), (520, 170)), "Error! Selected file is not a .obj!", view_prev_models)
+                            error_loading = True
+                        else:
+                            file_arr = event.text.split('\\')
+                            model_loc = file_arr[len(file_arr) - 2] + '/' + file_arr[len(file_arr) - 1]
+                            view_obj(model_loc, display_surf)
+            if mode == "main_menu":
+                main_menu.update(time_delta)
+            elif mode == "take_picture":
+                take_picture.update(time_delta)
+            elif mode == "view_prev_models":
+                view_prev_models.update(time_delta)
+
+                
+        display_surf.fill((228,228,228))
+        if mode == "main_menu":
+            main_menu.process_events(event)
+            #main_menu.update(time_delta)
+            main_menu.draw_ui(display_surf)
+        elif mode == "view_prev_models":
+            view_prev_models.process_events(event)
+            #view_prev_models.update(time_delta)
+            view_prev_models.draw_ui(display_surf)
+        elif mode == "take_picture":
+            take_picture.process_events(event)
+            if cam is not None:
+                if not picture_taken:
+                    image = cam.get_image()
+                    currPicture = image
+                    display_surf.blit(image, (0, 0))
+                    display_surf.blit(pic_text, text_rect)
+                    pygame.draw.rect(display_surf, (0,255,0), pygame.Rect((190,110), (256,256)), 2)
+                else:
+                    display_surf.blit(currPicture, (0,0))
+            #main_menu.update(time_delta)
+            take_picture.draw_ui(display_surf)
     
-
-print(filename)
-
-
-
-#function to run pygame window
-def renderModel():
-    cropImage()
-    path = generateModel(imagePath = 'userphoto/userinput_cropped.jpg')
-    os.system('viewobj.py ' + str(path))
-
-
-    
-
-#button to open camera
-openCam = tk.Button(root, text="Open up camera", padx=10, pady=5, fg="white", bg="#263D42", command=displayFrame)
-openCam.pack(side="top") 
+        pygame.display.update()
 
 
 
-#Pass file into DL model and obj into viewobj.py
-##
-
-
-
-#Button to run pygame 
-view = tk.Button(root, text="Render model", padx=10, pady=5, fg="white", bg="grey", command=renderModel)
-view.pack(side="bottom")
-
-
-#Button to upload file
-openFile = tk.Button(root, text="Choose File", padx=10, pady=5, fg="white", bg="#263D42", command=uploadFile)
-openFile.pack(side="bottom") 
-
-#button to take picture
-takePic = tk.Button(root, text="Take picture!", padx=10, pady=5, fg="white", bg="#263D42", command=takeSelfie)
-takePic.pack(side="bottom")
-
-
-
-
-root.mainloop()
+if __name__ == '__main__':
+    main()
