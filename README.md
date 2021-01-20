@@ -22,6 +22,8 @@ Requires the following packages:
 - Pyimgui 1.3.0
 - PyOpenGL
 
+And Python 3.5/3.6.
+
 More details can be found [on my website](https://jordibardia.github.io).
 
 Executable coming soon.
@@ -30,12 +32,9 @@ Executable coming soon.
 
 To run the application, run this command in the terminal:
 
-<code>
     python appgui.py
-</code>
+    
 
 You can run the view object program separately by running the command:
 
-<code>
     python viewobj.py [filename]
-</code>
