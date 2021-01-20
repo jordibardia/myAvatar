@@ -16,4 +16,4 @@ Datasets used:
 
 
 
-Requires Tensorflow 1.4.0 or lower and Python 3.5/3.6
+Requires Tensorflow 1.4.0 or lower, Pygame 1.9.6, and Python 3.5/3.6

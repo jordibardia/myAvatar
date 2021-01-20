@@ -15,10 +15,10 @@ def main():
         cam.start()
 
     display_surf = pygame.display.set_mode((640,480))
-    pygame.display.set_caption("Avatar Creator")
+    pygame.display.set_caption("myAvatar")
 
     consolas_font = pygame.font.SysFont('Consolas', 20)
-    #test_font = pygame.font.Font(pygame.font.get_default_font(), 30)
+    title_font = pygame.font.SysFont('Consolas', 40)
 
 
     #Initializing UI Managers for each state in the application
@@ -54,6 +54,10 @@ def main():
     #take_picture variables
     picture_taken = False
     currPicture = None
+
+    title_text = title_font.render("myAvatar", True, (0,0,0))
+    title_rect = title_text.get_rect()
+    title_rect.center = (320,50)
 
     while is_running:
         time_delta = clock.tick(60)/1000.0
@@ -125,6 +129,7 @@ def main():
                 
         display_surf.fill((228,228,228))
         if mode == "main_menu":
+            display_surf.blit(title_text, title_rect)
             main_menu.process_events(event)
             #main_menu.update(time_delta)
             main_menu.draw_ui(display_surf)

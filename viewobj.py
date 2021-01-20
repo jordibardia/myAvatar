@@ -4,11 +4,11 @@ from pygame.constants import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
-import pygame_gui
+#from objloader import OBJ
+from opengl_loaders.fasterobj import OBJ_vbo
+import imgui
+from opengl_loaders.custom_renderer import CustomRenderer
 
-from global_vals import *
-
-from objloader import OBJ
 
 def view_obj(filename, display_surf):
     #pygame.init()
@@ -17,12 +17,17 @@ def view_obj(filename, display_surf):
     hx = viewport[0]/2
     hy = viewport[1]/2
     display_surf = pygame.display.set_mode(viewport, OPENGL | DOUBLEBUF)
+    imgui.create_context() #Does not work with pygame 2.0+
+    impl = CustomRenderer()
 
-    model_view = pygame_gui.UIManager((800,600))
+    io = imgui.get_io()
+    io.display_size = viewport
 
-    back_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((0,0), (250,90)), text="Back", manager=model_view)
+    #Toggle visibility of hat
+    #displayHat = False
 
-    displayHat = True
+    #Toggle which hat to display (0 = None, 1 = Leather Hat, 2 = Santa Hat)
+    current = 0
 
     glLightfv(GL_LIGHT0, GL_POSITION,  (-40, 200, 100, 0.0))
     glLightfv(GL_LIGHT0, GL_AMBIENT, (0.2, 0.2, 0.2, 1.0))
@@ -34,9 +39,17 @@ def view_obj(filename, display_surf):
     glShadeModel(GL_SMOOTH)           # most obj files expect to be smooth-shaded
 
     # LOAD OBJECT AFTER PYGAME INIT
-    hat = OBJ('hats/new_leather_hat.OBJ', swapyz="True")
-    #output = OBJ(sys.argv[1], swapyz="True")
-    output = OBJ(filename, swapyz = "True")
+    hats = [
+        OBJ_vbo('hats/new_leather_hat.OBJ'), #Leather Hat
+        OBJ_vbo('hats/bigger_santahat.OBJ')  #Santa Hat
+    ]
+    hat_vals = [
+        [[0,0,0], [0,0,0]],
+        [[0,-90,0], [0,-76,96]], #(rx, ry, rz), (tx, ty, tz)
+        [[-175,88, 0], [0, 50, 130]]
+    ]
+    #hat = OBJ_vbo('hats/new_leather_hat.OBJ')
+    output = OBJ_vbo(filename)
 
     clock = pygame.time.Clock()
 
@@ -51,34 +64,26 @@ def view_obj(filename, display_surf):
     model_1 = glGetDoublev(GL_MODELVIEW_MATRIX)
     model_2 = model_1
 
+    #Head model rotational and translational values
     rx, ry, rz = (-175,88, 0) #Values found through trial and error
-    #rx_1, ry_1, rz_1 = (0,-90,0) #For santa hat
-    rx_1, ry_1, rz_1 = (0,-90,180)
     tx, ty = (0,0)
-    #tx_1, ty_1, tz_1 = (0,-76,96) #For santa hat
-    tx_1, ty_1, tz_1 = (0, 50, 130)
+    
+    #Current hat rotational and translational values
+    rx_h, ry_h, rz_h = (0,0,0)
+    tx_h, ty_h, tz_h = (0,0,0)
+
     zpos = 265
     rotate = move = False
     is_running = True
     while is_running:
-        #clock.tick(30)
         time_delta = clock.tick(60)/1000.0
 
         for e in pygame.event.get():
             if e.type == QUIT:
                 pygame.quit()
-            elif e.type == pygame.USEREVENT:
-                if e.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                    if e.ui_element == back_button:
-                        is_running = False
             elif e.type == KEYDOWN:
-                if e.key == K_1:
-                    displayHat = not displayHat
                 if e.key == K_ESCAPE:
                     is_running = False
-            #elif e.type == KEYDOWN and e.key == K_ESCAPE:
-                #pygame.quit()
-            #    is_running = False
             elif e.type == MOUSEBUTTONDOWN:
                 if e.button == 4: zpos = max(1, zpos-1)
                 elif e.button == 5: zpos += 1
@@ -89,16 +94,28 @@ def view_obj(filename, display_surf):
                 elif e.button == 3: move = False
             elif e.type == MOUSEMOTION:
                 i, j = e.rel
-                if rotate:
-                    if rz + i <= 60 and rz + i >= -60:
-                        rz += i
-                        rz_1 += i
-                if move:
-                    tx += i
-                    ty -= j
-                    rx += i
-                    rx -= i
-            #model_view.update(time_delta)
+                if not imgui.core.is_any_item_active():
+                    if rotate:
+                        if rz + i <= 60 and rz + i >= -60:
+                            rz += i
+                            for k in range(1, len(hat_vals)):
+                                #rz_h += i
+                                hat_vals[k][0][2] += i
+                    if move:
+                        tx += i
+                        ty -= j
+                        rx += i
+                        rx -= i
+            if e.type != 16: #If not video resize event
+                impl.process_event(e)
+
+        imgui.new_frame()	
+        imgui.begin("Options", True, flags=imgui.WINDOW_NO_RESIZE)
+        imgui.set_window_size(200,200)
+        clicked, current = imgui.listbox("Hats", current, ["None", "Leather Hat", "Santa Hat"])
+        rx_h, ry_h, rz_h = hat_vals[current][0]
+        tx_h, ty_h, tz_h = hat_vals[current][1]
+        imgui.end()
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glMatrixMode(GL_MODELVIEW)
@@ -117,7 +134,7 @@ def view_obj(filename, display_surf):
         glMultMatrixf(model_1)
         model_1 = glGetDoublev(GL_MODELVIEW_MATRIX)
 
-        glCallList(output.gl_list)
+        output.render()
 
         glPopMatrix()
 
@@ -125,32 +142,35 @@ def view_obj(filename, display_surf):
         glLoadIdentity()
 
         model_2 = glGetDoublev(GL_MODELVIEW_MATRIX)
-        #model_2 = temp
 
         glTranslate(tx/20, ty/20, -zpos)
-        glRotate(ry_1, 1, 0, 0)
-        glRotate(rx_1, 0, 1, 0)
-        glRotate(rz_1, 0, 0, 1)
-        glTranslate(0,ty_1,tz_1)
-
-        #glTranslate(tx_1, ty_1, tz_1)
+        glRotate(ry_h, 1, 0, 0)
+        glRotate(rx_h, 0, 1, 0)
+        glRotate(rz_h, 0, 0, 1)
+        glTranslate(0,ty_h,tz_h)
+        #glRotate(hat_vals[current][0][1], 1, 0, 0)
+        #glRotate(hat_vals[current][0][0], 0, 1, 0)
+        #glRotate(hat_vals[current][0][2], 0, 0, 1)
+        #glTranslate(0,hat_vals[current][1][1],hat_vals[current][1][2])
 
         glMultMatrixf(model_2)
         model_2 = glGetDoublev(GL_MODELVIEW_MATRIX)
-        #if not displayHat:
-        glCallList(hat.gl_list)
+
+        if current != 0:
+            hats[current - 1].render()
         glPopMatrix()
 
-        #model_view.process_events(e)
-        #model_view.update(time_delta)
-        #model_view.draw_ui(display_surf)
+        imgui.render()
+        impl.render(imgui.get_draw_data())
 
         pygame.display.flip()
 
     display_surf = pygame.display.set_mode((640,480))
 
-if len(sys.argv) != 0:
-    pygame.init()
-    pygame.display.set_caption('myAvatar')
 
-    view_obj(sys.argv[1], None)
+if __name__ == '__main__':
+    if len(sys.argv) != 0:
+        pygame.init()
+        pygame.display.set_caption('myAvatar')
+
+        view_obj(sys.argv[1], None)
