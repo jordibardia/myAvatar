@@ -1,6 +1,6 @@
 # myAvatar
 
-Face3D and models by Yao Feng:
+Face3D and model by Yao Feng:
 
 - https://github.com/YadiraF/PRNet
 
@@ -29,6 +29,7 @@ More details can be found [on my website](https://jordibardia.github.io).
 Executable coming soon.
 
 ## Instructions
+The application requires a model to run. The original author's model can be downloaded from [here](https://drive.google.com/file/d/1UoE-XuW1SDLUjZmJPkIZ1MLxvQFgmTFH/view?usp=sharing) and the one I trained for my class [here](https://drive.google.com/file/d/13ZHCaBC8rVgGq1i0U0YKztMJAAqejOVQ/view?usp=sharing). The model must be placed in a folder called <code>saved_models</code>. I currently have the default model set to be that of the original author's.
 
 To run the application, run this command in the terminal:
 
